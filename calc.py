@@ -99,6 +99,49 @@ class ModStats:
         self.flat_cc = flat_cc
         self.max_ammo = max_ammo
 
+def parse_stat(stat):
+    abbreviation_map = {
+        "cc": "cc",
+        "critchance": "cc",
+        "cd": "cd",
+        "critdamage": "cd",
+        "dmg": "base_damage",
+        "damage": "base_damage",
+        "ms": "multishot",
+        "multi": "multishot",
+        "multishot": "multishot",
+        "imp": "impact",
+        "impact": "impact",
+        "punc": "puncture",
+        "puncture": "puncture",
+        "slash": "slash",
+        "sl": "slash",
+        "heat": "heat",
+        "fire": "heat",
+        "cold": "cold",
+        "tox": "tox",
+        "toxin": "tox",
+        "ele": "elec",
+        "elec": "elec",
+        "electric": "elec",
+        "electricity": "elec",
+        "fr": "fire_rate",
+        "firerate": "fire_rate",
+        "dtc": "corpus",
+        "corp": "corpus",  
+        "corpus": "corpus",
+        "ammo": "max_ammo",
+    }
+
+    for abbr, key in abbreviation_map.items():
+        if abbr in stat:
+            try:
+                value = float(stat.replace(abbr, "").replace(",", "")) / 100
+                return key, value
+            except ValueError:
+                return None, None
+    return None, None
+
 def parse_riven_mod(riven_mod_str):
     stats = riven_mod_str.replace("riven ", "").split(" ")
     riven_stats = {
@@ -117,41 +160,12 @@ def parse_riven_mod(riven_mod_str):
         "corpus": 0,
         "max_ammo": 0,
     }
-    
+
     for stat in stats:
-        try:
-            if "cc" in stat:
-                riven_stats["cc"] = float(stat.replace("cc", "").replace(",", ""))/100
-            elif "cd" in stat:
-                riven_stats["cd"] = float(stat.replace("cd", "").replace(",", ""))/100
-            elif "dmg" in stat:
-                riven_stats["base_damage"] = float(stat.replace("dmg", "").replace(",", ""))/100
-            elif "ms" in stat:
-                riven_stats["multishot"] = float(stat.replace("ms", "").replace(",", ""))/100
-            elif "imp" in stat:
-                riven_stats["impact"] = float(stat.replace("imp", "").replace(",", ""))/100
-            elif "punc" in stat:
-                riven_stats["puncture"] = float(stat.replace("punc", "").replace(",", ""))/100
-            elif "slash" in stat:
-                riven_stats["slash"] = float(stat.replace("slash", "").replace(",", ""))/100
-            elif "heat" in stat:
-                riven_stats["heat"] = float(stat.replace("heat", "").replace(",", ""))/100
-            elif "cold" in stat:
-                riven_stats["cold"] = float(stat.replace("cold", "").replace(",", ""))/100
-            elif "tox" in stat:
-                riven_stats["tox"] = float(stat.replace("tox", "").replace(",", ""))/100
-            elif "elec" in stat:
-                riven_stats["elec"] = float(stat.replace("elec", "").replace(",", ""))/100
-            elif "fr" in stat:
-                riven_stats["fire_rate"] = float(stat.replace("fr", "").replace(",", ""))/100
-            elif "corpus" in stat:
-                riven_stats["corpus"] = float(stat.replace("corpus", "").replace(",", ""))/100
-            elif "ammo" in stat:
-                riven_stats["max_ammo"] = float(stat.replace("ammo", "").replace(",", ""))/100
-        except ValueError:
-            # Skip invalid stat strings
-            continue
-    
+        key, value = parse_stat(stat)
+        if key:
+            riven_stats[key] = value
+
     return riven_stats
 
 def grade_riven_mod(mods_input, weapon_name):
@@ -161,33 +175,33 @@ def grade_riven_mod(mods_input, weapon_name):
     print(f"riven: {riven_stats}")
     dispo = weapon_data.get(weapon_name).get("dispo")
     reference_values = {
-    'ms': 0.6030,
-    'dmg': 0.9990,
-    'cc': 0.9990,
-    'cd': 0.8010,
-    'fr': 0.6003,
-    'elec': 1.1970,
-    'heat': 1.1970,
-    'cold': 1.1970,
-    'tox': 1.1970,
-    'corpus': 0.4500,
-    'ammo': 0.9990,
-    'imp': 0.9000,
-    'slash': 0.9000,
-    'punc': 0.9000
+        'multishot': 0.6030,
+        'base_damage': 0.9990,
+        'cc': 0.9990,
+        'cd': 0.8010,
+        'fire_rate': 0.6003,
+        'elec': 1.1970,
+        'heat': 1.1970,
+        'cold': 1.1970,
+        'tox': 1.1970,
+        'corpus': 0.4500,
+        'max_ammo': 0.9990,
+        'impact': 0.9000,
+        'slash': 0.9000,
+        'puncture': 0.9000
     }
     grading = {
-    'S': 9.5,
-    'A+': 7.5,
-    'A': 5.5,
-    'A-': 3.5,
-    'B+': 1.5,
-    'B': -1.5,
-    'B-': -3.5,
-    'C+': -5.5,
-    'C': -7.5,
-    'C-': -9.5,
-    'F': -11.0
+        'S': 9.5,
+        'A+': 7.5,
+        'A': 5.5,
+        'A-': 3.5,
+        'B+': 1.5,
+        'B': -1.5,
+        'B-': -3.5,
+        'C+': -5.5,
+        'C': -7.5,
+        'C-': -9.5,
+        'F': -11.0
     }
     total_positives = 0
     total_negatives = 0
@@ -213,13 +227,14 @@ def grade_riven_mod(mods_input, weapon_name):
         if total_negatives == 1:
             negmulti = 0.75
             posmulti = 0.9375
-    
+
     stat_grades = []
     for stat in riven_stats:
-        stat_type = ''.join(filter(str.isalpha, stat))
-        stat_value = (float(''.join(filter(lambda x: x.isdigit() or x == '.', stat)))) / 100
-        if stat_type in reference_values:
-            reference_value = reference_values[stat_type]
+        key, stat_value = parse_stat(stat)
+        if key and key in reference_values:
+            reference_value = reference_values[key]
+            stat_value = stat_value if not stat.startswith('-') else -stat_value
+            #print(f"key: {key}, stat_value: {stat_value}, reference_value: {reference_value}")
             range = ((stat_value - (reference_value * dispo * (posmulti if stat_value > 0 else negmulti))) * 100) / (reference_value * dispo * (posmulti if stat_value > 0 else negmulti))
             grade_found = False
             for grade in grading:
@@ -230,7 +245,7 @@ def grade_riven_mod(mods_input, weapon_name):
             if not grade_found:
                 stat_grades.append("?")
     print(f"Stat grades: {stat_grades}")
-                    
+
 def scan_mods(mods_input):
     if isinstance(mods_input, str):
         mods_input = [mod.strip() for mod in mods_input.split(',')]
@@ -726,7 +741,7 @@ def find_best_build(weapon_name, enemy_name, max_mods, extra_mods=None):
         #    best_ttk_damage = worst_crit_total
         #    best_ttk_damage_aoe = worst_crit_total_aoe
         #    shots_to_kill_best_ttk = shots_to_kill
-        ratio = (worst_crit_total + worst_crit_total_aoe) / (ttk) # --todo adjust ttk ratio
+        ratio = (worst_crit_total + worst_crit_total_aoe) / (ttk) # todo adjust ttk ratio
         if ratio > best_ratio:
             best_ratio = ratio
             best_ttk = ttk
@@ -754,7 +769,7 @@ def main():
     
     enemy_name = "profit taker leg" 
 
-    extra_mods = "riven 97.5cc 123.3elec 95.9dmg -1ammo, mech intrinsic, deathbringer, damage bless"#"riven 100cc 82dmg 44corpus -44.7ammo, eclipse, damage bless, volt shield"
+    extra_mods = "riven 97.5cc 48dtc 95.9dmg -1ammo, mech intrinsic, deathbringer, damage bless"#"riven 100cc 82dmg 44corpus -44.7ammo, eclipse, damage bless, volt shield"
     #if weapon_name == "mausolon":
     #    extra_mods += ", ammo chain"
     
